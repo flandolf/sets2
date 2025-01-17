@@ -65,11 +65,15 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 class MainActivity : ComponentActivity() {
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         val themeViewModel: ThemeViewModel by viewModels()
+
+
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 setContent {
@@ -84,6 +88,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
 @Composable
 fun Navigation(themeViewModel: ThemeViewModel) {
     val navController = rememberNavController()

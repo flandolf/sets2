@@ -30,10 +30,13 @@ fun Sets2Theme(
     val colorScheme = when {
         dynamicColor -> {
             val context = LocalContext.current
-            if (darkTheme == "Dark") dynamicDarkColorScheme(context)
             if (darkTheme == "System") {
-                if (isSystemInDarkTheme()) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-            } else dynamicLightColorScheme(context)
+                if(isSystemInDarkTheme()) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            } else if (darkTheme == "Dark") {
+                dynamicDarkColorScheme(context)
+            } else {
+                dynamicLightColorScheme(context)
+            }
         }
         darkTheme == "Dark" -> DarkColorScheme
         darkTheme == "Light" -> LightColorScheme

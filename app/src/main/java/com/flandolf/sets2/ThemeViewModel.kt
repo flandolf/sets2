@@ -6,7 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 
 class ThemeViewModel : ViewModel() {
-    var darkTheme by mutableStateOf("system")
+    var darkTheme by mutableStateOf("System")
         private set
 
     fun updateDarkTheme(theme: String) {

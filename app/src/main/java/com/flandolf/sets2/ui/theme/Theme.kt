@@ -1,7 +1,5 @@
 package com.flandolf.sets2.ui.theme
 
-import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -25,17 +23,23 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun Sets2Theme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: String = "System",
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
         dynamicColor -> {
             val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            if (darkTheme == "Dark") dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+        darkTheme == "Dark" -> DarkColorScheme
+        darkTheme == "Light" -> LightColorScheme
+        darkTheme == "System" -> {
+            if (isSystemInDarkTheme()) DarkColorScheme else LightColorScheme
+        }
+        else -> {
+            if (isSystemInDarkTheme()) DarkColorScheme else LightColorScheme
+        }
     }
 
     MaterialTheme(

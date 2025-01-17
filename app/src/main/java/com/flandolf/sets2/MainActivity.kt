@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -46,9 +48,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.NavController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.flandolf.sets2.ui.theme.Sets2Theme
 import com.flandolf.sets2.ui.theme.Typography
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.Locale
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -58,30 +68,59 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent {
-            Sets2Theme {
-                Scaffold(
-                    topBar = { AppBar() }
-                ) { innerPadding ->
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding)
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        val sets = remember { mutableIntStateOf(1) }
-                        var restDuration by remember { mutableStateOf(3.minutes) }
-                        CountdownTimer(sets, restDuration) { newDuration ->
-                            restDuration = newDuration
-                        }
-                        SetCounter(sets)
-                        WorkoutSession()
 
+        val themeViewModel: ThemeViewModel by viewModels()
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                setContent {
+                    Sets2Theme (
+                        darkTheme = themeViewModel.darkTheme,
+                        dynamicColor = themeViewModel.dynamicColor
+                    ) {
+                        Navigation(themeViewModel)
                     }
                 }
             }
+        }
+    }
+}
+@Composable
+fun Navigation(themeViewModel: ThemeViewModel) {
+    val navController = rememberNavController()
+
+    NavHost(navController = navController, startDestination = "home") {
+        composable("home") {
+            HomeScreen(navController)
+        }
+        composable("settings") {
+            SettingsScreen(navController, themeViewModel)
+        }
+    }
+}
+
+
+
+@Composable
+fun HomeScreen(navController: NavController) {
+    Scaffold(
+        topBar = { MainAppBar(navController) }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            val sets = remember { mutableIntStateOf(1) }
+            var restDuration by remember { mutableStateOf(3.minutes) }
+            CountdownTimer(sets, restDuration) { newDuration ->
+                restDuration = newDuration
+            }
+            SetCounter(sets)
+            WorkoutSession()
+
         }
     }
 }
@@ -429,17 +468,38 @@ fun ChangeTimerAlertDialog(
     )
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppBar() {
+fun MainAppBar(navController: NavController) {
     TopAppBar(
         title = {
             Text(text = "Sets 2")
         },
         actions = {
-            IconButton(onClick = { /* Handle action icon click */ }) {
+            IconButton(onClick = {
+                navController.navigate("settings")
+            }) {
                 Icon(Icons.Filled.Settings, contentDescription = "Settings")
             }
         }
     )
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsAppBar(navController: NavController) {
+    TopAppBar(
+        title = {
+            Text(text = "Settings")
+        },
+        actions = {
+            IconButton(onClick = {
+                navController.navigate("home")
+            }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+        }
+    )
+}
+

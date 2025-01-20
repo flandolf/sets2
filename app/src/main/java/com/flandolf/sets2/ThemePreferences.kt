@@ -10,28 +10,28 @@ import kotlinx.coroutines.flow.map
 class ThemePreferences(private val context: Context) {
     private val Context.dataStore by preferencesDataStore(name = "theme_preferences")
 
-    private val THEME_KEY = stringPreferencesKey("dark_theme")
-    private val DYNAMIC_COLOR_KEY = booleanPreferencesKey("dynamic_color")
+    private val themePreferenceKey = stringPreferencesKey("dark_theme")
+    private val dynamicColorEnabledKey = booleanPreferencesKey("dynamic_color")
 
     val themeFlow: Flow<String> = context.dataStore.data
         .map { preferences ->
-            preferences[THEME_KEY] ?: "System"
+            preferences[themePreferenceKey] ?: "System"
         }
 
     val dynamicColorFlow: Flow<Boolean> = context.dataStore.data
         .map { preferences ->
-            preferences[DYNAMIC_COLOR_KEY] ?: true
+            preferences[dynamicColorEnabledKey] ?: true
         }
 
     suspend fun saveThemeSetting(theme: String) {
         context.dataStore.edit { preferences ->
-            preferences[THEME_KEY] = theme
+            preferences[themePreferenceKey] = theme
         }
     }
 
     suspend fun saveDynamicColorSetting(dynamic: Boolean) {
         context.dataStore.edit { preferences ->
-            preferences[DYNAMIC_COLOR_KEY] = dynamic
+            preferences[dynamicColorEnabledKey] = dynamic
         }
     }
 }

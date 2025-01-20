@@ -1,5 +1,6 @@
 package com.flandolf.sets2
 
+import SetCounterViewModel
 import SetTimerViewModel
 import ThemeViewModel
 import WorkoutViewModel
@@ -39,10 +40,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -50,6 +49,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
@@ -61,8 +62,6 @@ import java.util.Locale
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 
 class MainActivity : ComponentActivity() {
 
@@ -92,6 +91,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
 @Composable
 fun Navigation(themeViewModel: ThemeViewModel) {
     val navController = rememberNavController()
@@ -108,11 +108,11 @@ fun Navigation(themeViewModel: ThemeViewModel) {
 }
 
 
-
 @Composable
 fun HomeScreen(navController: NavController) {
     val setTimerViewModel: SetTimerViewModel = viewModel()
     val workoutViewModel: WorkoutViewModel = viewModel()
+    val setCounterViewModel: SetCounterViewModel = viewModel()
     Scaffold(
         topBar = { MainAppBar(navController) }
     ) { innerPadding ->
@@ -124,19 +124,18 @@ fun HomeScreen(navController: NavController) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            val sets = remember { mutableIntStateOf(1) }
             var restDuration by remember { mutableStateOf(3.minutes) }
-            CountdownTimer(sets, restDuration, { newDuration ->
+            CountdownTimer(restDuration, { newDuration ->
                 restDuration = newDuration
-            }, viewModel = setTimerViewModel)
-            SetCounter(sets)
+            }, viewModel = setTimerViewModel, setModel = setCounterViewModel)
+            SetCounter(setCounterViewModel)
             WorkoutSession(workoutViewModel)
         }
     }
 }
 
 @Composable
-fun WorkoutSession(viewModel: WorkoutViewModel = androidx.lifecycle.viewmodel.compose.viewModel()) {
+fun WorkoutSession(viewModel: WorkoutViewModel = viewModel()) {
     val isRunning by viewModel::isRunning
     val elapsedTime by viewModel::elapsedTime
     var showWorkoutCompletedDialog by remember { mutableStateOf(false) }
@@ -164,7 +163,9 @@ fun WorkoutSession(viewModel: WorkoutViewModel = androidx.lifecycle.viewmodel.co
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Row(
@@ -191,7 +192,7 @@ fun WorkoutSession(viewModel: WorkoutViewModel = androidx.lifecycle.viewmodel.co
 }
 
 @Composable
-fun SetCounter(sets: MutableState<Int>) {
+fun SetCounter(viewModel: SetCounterViewModel = viewModel()) {
     Card(
         elevation = CardDefaults.cardElevation(
             defaultElevation = 6.dp
@@ -202,7 +203,7 @@ fun SetCounter(sets: MutableState<Int>) {
         modifier = Modifier
             .fillMaxWidth()
     ) {
-        Column (
+        Column(
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxWidth(),
@@ -223,7 +224,7 @@ fun SetCounter(sets: MutableState<Int>) {
             ) {
                 // Left side: Text displaying sets count
                 Text(
-                    text = "Sets: ${sets.value}",
+                    text = "Sets: ${viewModel.counter}",
                     style = Typography.headlineMedium
                 )
 
@@ -234,7 +235,7 @@ fun SetCounter(sets: MutableState<Int>) {
                         .height(120.dp),
                 ) {
                     ElevatedButton(
-                        onClick = { sets.value++ },
+                        onClick = { viewModel.increment() },
                         modifier = Modifier
                             .height(60.dp)
                             .fillMaxWidth(),
@@ -249,7 +250,7 @@ fun SetCounter(sets: MutableState<Int>) {
                     }
 
                     ElevatedButton(
-                        onClick = { sets.value = 0 },
+                        onClick = { viewModel.reset() },
                         modifier = Modifier
                             .height(60.dp)
                             .fillMaxWidth(),
@@ -269,12 +270,14 @@ fun SetCounter(sets: MutableState<Int>) {
 
     }
 }
+
 @Composable
 fun CountdownTimer(
-    sets: MutableState<Int>,
     restDuration: Duration,
     onDurationChange: (Duration) -> Unit,
-    viewModel: SetTimerViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    viewModel: SetTimerViewModel = viewModel(),
+    setModel: SetCounterViewModel = viewModel()
+
 ) {
     val remainingTime by viewModel::remainingTime
     val isRunning by viewModel::isRunning
@@ -311,7 +314,10 @@ fun CountdownTimer(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             FilledTonalButton(
-                onClick = { viewModel.startTimer(restDuration) },
+                onClick = {
+                    viewModel.startTimer(restDuration)
+                    setModel.increment()
+                },
                 enabled = !isRunning && remainingTime > 0
             ) {
                 Text(text = if (remainingTime > 0) "Start Rest!" else "Time's Up!")
@@ -383,9 +389,11 @@ fun ChangeTimerAlertDialog(
                     horizontalArrangement = Arrangement.SpaceBetween, // Spread items to opposite ends
                     verticalAlignment = Alignment.CenterVertically // Center items vertically
                 ) {
-                    Text(text = formattedTime, style = Typography.headlineMedium.copy(
-                        fontWeight = FontWeight.Bold
-                    ))
+                    Text(
+                        text = formattedTime, style = Typography.headlineMedium.copy(
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
                     Column(
                         modifier = Modifier
                             .width(120.dp)
@@ -405,7 +413,10 @@ fun ChangeTimerAlertDialog(
                                 bottomEnd = 0.dp
                             ) // Flat bottom
                         ) {
-                            Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "Increment Rest")
+                            Icon(
+                                Icons.Filled.KeyboardArrowUp,
+                                contentDescription = "Increment Rest"
+                            )
                         }
 
                         ElevatedButton(
@@ -420,7 +431,10 @@ fun ChangeTimerAlertDialog(
                                 bottomEnd = 12.dp
                             ) // Flat top
                         ) {
-                            Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Decrement Rest")
+                            Icon(
+                                Icons.Filled.KeyboardArrowDown,
+                                contentDescription = "Decrement Rest"
+                            )
                         }
                     }
                 }

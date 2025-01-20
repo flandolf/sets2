@@ -1,22 +1,27 @@
-package com.flandolf.sets2
-
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.flandolf.sets2.ThemePreferences
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
-class ThemeViewModel : ViewModel() {
-    var darkTheme by mutableStateOf("System")
-        private set
+class ThemeViewModel(private val themePreferences: ThemePreferences) : ViewModel() {
+    val darkTheme: StateFlow<String> = themePreferences.themeFlow
+        .stateIn(viewModelScope, SharingStarted.Lazily, "System")
+
+    val dynamicColor: StateFlow<Boolean> = themePreferences.dynamicColorFlow
+        .stateIn(viewModelScope, SharingStarted.Lazily, true)
 
     fun updateDarkTheme(theme: String) {
-        darkTheme = theme
+        viewModelScope.launch {
+            themePreferences.saveThemeSetting(theme)
+        }
     }
 
-    var dynamicColor by mutableStateOf(true)
-        private set
-
     fun updateDynamicColor(dynamic: Boolean) {
-        dynamicColor = dynamic
+        viewModelScope.launch {
+            themePreferences.saveDynamicColorSetting(dynamic)
+        }
     }
 }

@@ -1,5 +1,8 @@
 package com.flandolf.sets2
 
+import SetTimerViewModel
+import ThemeViewModel
+import WorkoutViewModel
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -36,11 +39,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -48,50 +50,52 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.flandolf.sets2.ui.theme.Sets2Theme
+import com.flandolf.sets2.ui.theme.AppTheme
 import com.flandolf.sets2.ui.theme.Typography
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.util.Locale
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 
 class MainActivity : ComponentActivity() {
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val themeViewModel: ThemeViewModel by viewModels()
-
-
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                setContent {
-                    Sets2Theme (
-                        darkTheme = themeViewModel.darkTheme,
-                        dynamicColor = themeViewModel.dynamicColor
-                    ) {
-                        Navigation(themeViewModel)
-                    }
+        val themePreferences = ThemePreferences(this)
+        val themeViewModel: ThemeViewModel by viewModels {
+            object : ViewModelProvider.Factory {
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    @Suppress("UNCHECKED_CAST")
+                    return ThemeViewModel(themePreferences) as T
                 }
+            }
+        }
+
+
+        setContent {
+            val dynamicColorState = themeViewModel.dynamicColor.collectAsState()
+            AppTheme(
+                darkTheme = themeViewModel.darkTheme.collectAsState().value,
+                dynamicColor = dynamicColorState
+            ) {
+                Navigation(themeViewModel)
             }
         }
     }
 }
-
 @Composable
 fun Navigation(themeViewModel: ThemeViewModel) {
     val navController = rememberNavController()
+
 
     NavHost(navController = navController, startDestination = "home") {
         composable("home") {
@@ -107,6 +111,8 @@ fun Navigation(themeViewModel: ThemeViewModel) {
 
 @Composable
 fun HomeScreen(navController: NavController) {
+    val setTimerViewModel: SetTimerViewModel = viewModel()
+    val workoutViewModel: WorkoutViewModel = viewModel()
     Scaffold(
         topBar = { MainAppBar(navController) }
     ) { innerPadding ->
@@ -120,58 +126,45 @@ fun HomeScreen(navController: NavController) {
         ) {
             val sets = remember { mutableIntStateOf(1) }
             var restDuration by remember { mutableStateOf(3.minutes) }
-            CountdownTimer(sets, restDuration) { newDuration ->
+            CountdownTimer(sets, restDuration, { newDuration ->
                 restDuration = newDuration
-            }
+            }, viewModel = setTimerViewModel)
             SetCounter(sets)
-            WorkoutSession()
-
+            WorkoutSession(workoutViewModel)
         }
     }
 }
 
 @Composable
-fun WorkoutSession() {
-    var isRunning by remember { mutableStateOf(false) }
-    var elapsedTime by remember { mutableLongStateOf(0L) }
+fun WorkoutSession(viewModel: WorkoutViewModel = androidx.lifecycle.viewmodel.compose.viewModel()) {
+    val isRunning by viewModel::isRunning
+    val elapsedTime by viewModel::elapsedTime
     var showWorkoutCompletedDialog by remember { mutableStateOf(false) }
-    LaunchedEffect(isRunning) {
-        while (isRunning) {
-            delay(1000L) // Wait for 1 second
-            elapsedTime += 1
-        }
-    }
+
     val formattedTime = remember(elapsedTime) {
         val minutes = elapsedTime / 60
         val seconds = elapsedTime % 60
         String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
     }
+
     if (showWorkoutCompletedDialog) {
         WorkoutCompletedDialog(
             onDismissRequest = { showWorkoutCompletedDialog = false },
             onConfirmation = {
                 showWorkoutCompletedDialog = false
-                elapsedTime = 0
+                viewModel.resetTimer()
             },
             duration = formattedTime
         )
     }
 
-
     Card(
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 6.dp
-        ),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Row(
@@ -182,17 +175,13 @@ fun WorkoutSession() {
                 Text("Workout Session", style = Typography.titleMedium)
             }
             Text(formattedTime, style = Typography.headlineMedium)
-            Row (
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                FilledTonalButton(onClick = {
-                    isRunning=true
-                }, enabled = !isRunning) {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                FilledTonalButton(onClick = { viewModel.startTimer() }, enabled = !isRunning) {
                     Text("Start Session")
                 }
                 ElevatedButton(onClick = {
-                    isRunning=false
-                    showWorkoutCompletedDialog=true
+                    viewModel.stopTimer()
+                    showWorkoutCompletedDialog = true
                 }, enabled = isRunning) {
                     Text("End Session")
                 }
@@ -280,24 +269,16 @@ fun SetCounter(sets: MutableState<Int>) {
 
     }
 }
-
 @Composable
-fun CountdownTimer(sets: MutableState<Int>, restDuration: Duration, onDurationChange: (Duration) -> Unit) {
-    var remainingTime by remember { mutableLongStateOf(restDuration.inWholeSeconds) }
-    var isRunning by remember { mutableStateOf(false) }
+fun CountdownTimer(
+    sets: MutableState<Int>,
+    restDuration: Duration,
+    onDurationChange: (Duration) -> Unit,
+    viewModel: SetTimerViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+) {
+    val remainingTime by viewModel::remainingTime
+    val isRunning by viewModel::isRunning
     val openAlertDialog = remember { mutableStateOf(false) }
-
-    // Countdown logic
-    LaunchedEffect(isRunning) {
-        if (isRunning) {
-            sets.value++
-            while (remainingTime > 0) {
-                delay(1000L) // Wait for 1 second
-                remainingTime -= 1
-            }
-            isRunning = false // Stop the timer when it finishes
-        }
-    }
 
     // Format the remaining time as "MM:SS"
     val formattedTime = remember(remainingTime) {
@@ -310,9 +291,8 @@ fun CountdownTimer(sets: MutableState<Int>, restDuration: Duration, onDurationCh
         ChangeTimerAlertDialog(
             onDismissRequest = { openAlertDialog.value = false },
             onConfirmation = { newDuration ->
-                remainingTime = newDuration.inWholeSeconds
-                onDurationChange(newDuration) // Update the rest duration
-                isRunning = false
+                viewModel.resetTimer(newDuration)
+                onDurationChange(newDuration)
                 openAlertDialog.value = false
             },
             currentDuration = restDuration
@@ -331,17 +311,14 @@ fun CountdownTimer(sets: MutableState<Int>, restDuration: Duration, onDurationCh
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             FilledTonalButton(
-                onClick = { isRunning = true },
+                onClick = { viewModel.startTimer(restDuration) },
                 enabled = !isRunning && remainingTime > 0
             ) {
                 Text(text = if (remainingTime > 0) "Start Rest!" else "Time's Up!")
             }
 
             ElevatedButton(
-                onClick = {
-                    remainingTime = restDuration.inWholeSeconds // Reset using the updated rest duration
-                    isRunning = false
-                }
+                onClick = { viewModel.resetTimer(restDuration) }
             ) {
                 Text(text = "Reset Timer")
             }

@@ -1,5 +1,6 @@
 package com.flandolf.sets2
 
+import ThemeViewModel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,10 +17,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(navController: NavController, themeViewModel: ThemeViewModel) {
+    val darkTheme by themeViewModel.darkTheme.collectAsState()
+    val dynamicColor by themeViewModel.dynamicColor.collectAsState()
 
     Scaffold(
         topBar = { SettingsAppBar(navController = navController) }
@@ -38,7 +43,7 @@ fun SettingsScreen(navController: NavController, themeViewModel: ThemeViewModel)
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 val darkOptions = listOf("Dark", "Light", "System")
-                val darkSelectedIndex = when (themeViewModel.darkTheme) {
+                val darkSelectedIndex = when (darkTheme) {
                     "Dark" -> 0
                     "Light" -> 1
                     "System" -> 2
@@ -62,7 +67,7 @@ fun SettingsScreen(navController: NavController, themeViewModel: ThemeViewModel)
                     }
                 }
 
-                val dynamicColorSelectedIndex = if (themeViewModel.dynamicColor) 0 else 1
+                val dynamicColorSelectedIndex = if (dynamicColor) 0 else 1
                 val dynamicColorOptions = listOf("Dynamic", "Static")
 
                 Text("Dynamic Colour")

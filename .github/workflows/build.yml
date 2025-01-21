@@ -37,7 +37,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore ${{ secrets.KEYSTORE_FILE }} app/build/outputs/apk/release/app-release-unsigned.apk ${{ secrets.KEY_ALIAS }}
-          $ANDROID_HOME/build-tools/30.0.3/zipalign -v 4 app/build/outputs/apk/release/app-release-unsigned.apk app/build/outputs/apk/release/app-release.apk
+          $ANDROID_HOME/build-tools/30.0.3/zipalign -v 4 app/build/outputs/apk/release/app-release-unsigned.apk app/build/outputs/apk/release/app-release.apk -storepass ${{ secrets.KEYSTORE_PASSWORD }} -keypass ${{ secrets.KEY_PASSWORD }}
 
       - name: Upload APK
         uses: actions/upload-artifact@v3

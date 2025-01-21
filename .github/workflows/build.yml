@@ -33,9 +33,6 @@ jobs:
       - name: Decode and save keystore file
         run: echo ${{ secrets.KEYSTORE_FILE }} | base64 -d > my-release-key.jks
 
-      - name: Verify keystore file
-        run: keytool -list -v -keystore my-release-key.jks -storepass ${{ secrets.KEYSTORE_PASSWORD }}
-
       - name: Sign APK
         env:
           KEYSTORE_FILE: my-release-key.jks

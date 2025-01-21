@@ -62,7 +62,7 @@ jobs:
         with:
           token: ${{ github.token }}
           tag: ${{ steps.parse_version.outputs.VERSION }}
-          artifacts: app/build/outputs/apk/release/app-release.apk
+          artifacts: app-release.apk
           generateReleaseNotes: true
           makeLatest: true
           replacesArtifacts: true

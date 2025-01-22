@@ -39,7 +39,7 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew clean assembleRelease
 
-      - name: Sign Android
+      - name: Sign Android Release
         uses: noriban/sign-android-release@v5.1
         id: sign_app
         with:

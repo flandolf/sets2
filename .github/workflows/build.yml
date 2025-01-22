@@ -52,11 +52,15 @@ jobs:
           keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
 
+      - name: Rename APK
+        run: mv ${{steps.sign_app.outputs.signedReleaseFile}} sets2-signed.apk
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release.apk
-          path: ${{steps.sign_app.outputs.signedReleaseFile}}
+          name: sets2-signed.apk
+          path: app/build/outputs/apk/release/sets2-signed.apk
+
+
 
       - name: Generate version
         id: parse_version
@@ -71,7 +75,7 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ steps.parse_version.outputs.VERSION }}
-          artifacts: app-release.apk
+          artifacts: sets2-signed.apk
           generateReleaseNotes: true
           makeLatest: true
           replacesArtifacts: true

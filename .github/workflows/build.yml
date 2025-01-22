@@ -21,32 +21,32 @@ jobs:
           distribution: 'oracle'
           java-version: '17'
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x ./gradlew
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Download dependencies
-        run: ./gradlew build --no-daemon
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: ''
 
-      - name: Build APK
-        run: ./gradlew assembleRelease --no-daemon
+      - name: Build with Gradle
+        run: ./gradlew clean assembleRelease
 
-      - name: Decode and save keystore file
-        run: echo ${{ secrets.KEYSTORE_FILE }} | base64 -d > my-release-key.jks
-
-      - name: Sign APK
-        env:
-          KEYSTORE_FILE: my-release-key.jks
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore $KEYSTORE_FILE -storepass $KEYSTORE_PASSWORD -keypass $KEY_PASSWORD -signedjar app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/app-release-unsigned.apk $KEY_ALIAS
+      - name: Sign Android
+        uses: noriban/sign-android-release@v5.1
+        id: sign_app
+        with:
+          releaseDirectory: app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.KEYSTORE_FILE }}
+          keyAlias: ${{ secrets.KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: app-release.apk
-          path: app/build/outputs/apk/release/app-release.apk
+          path: ${{steps.sign_app.outputs.signedReleaseFile}}
 
       - name: Generate version
         id: parse_version
@@ -60,7 +60,7 @@ jobs:
         continue-on-error: true
         uses: ncipollo/release-action@v1
         with:
-          token: ${{ github.token }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ steps.parse_version.outputs.VERSION }}
           artifacts: app-release.apk
           generateReleaseNotes: true

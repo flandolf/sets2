@@ -55,10 +55,8 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: sets2-signed.apk
+          name: sets2
           path: ${{ steps.sign_app.outputs.signedApkPath }}
-
-
 
       - name: Generate version
         id: parse_version

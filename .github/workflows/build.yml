@@ -61,8 +61,8 @@ jobs:
       - name: Generate version
         id: parse_version
         run: |
-          COMMIT_NUM=$(git rev-list --count HEAD)
-          VERSION=$(echo "$COMMIT_NUM + 200 + 10000" | bc)
+          COMMIT_NUM=$(git rev-list --count --all)
+          VERSION=$(echo "$COMMIT_NUM" | bc)
           echo "Generated Version: $VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
